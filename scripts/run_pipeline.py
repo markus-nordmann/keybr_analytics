@@ -64,4 +64,54 @@ def git_has_output_changes() -> bool:
     """
     rc = subprocess.run(
         ["git", "diff", "--quiet", "--", "output"],
+        cwd=ROOT_DIR,
+    ).returncode
+    return rc != 0
+
+
+def git_commit_and_push() -> None:
+    """Step 3: commit CSVs and push to GitHub if there are changes."""
+    print("\n[3/3] Committing and pushing changes to GitHub ...")
+
+    if not git_has_output_changes():
+        print("No changes in output/*.csv – skipping commit & push.")
+        return
+
+    # Stage CSV files
+    run(
+        [
+            "git",
+            "add",
+            "output/daily_metrics.csv",
+            "output/key_metrics.csv",
+            "output/weak_keys.csv",
+        ]
     )
+
+    # Commit message with current date
+    msg = f"Update metrics from {date.today().isoformat()}"
+    rc = run(["git", "commit", "-m", msg], check=False)
+
+    if rc != 0:
+        # e.g. nothing to commit
+        print("git commit returned non-zero exit code, skipping push.")
+        return
+
+    # Push to remote
+    run(["git", "push"])
+    print("Git push done.")
+
+
+# --------------------------------------------------------------------
+# Main
+# --------------------------------------------------------------------
+def main() -> None:
+    print(f"Project root: {ROOT_DIR}")
+    update_database()
+    rebuild_metrics()
+    git_commit_and_push()
+    print("\nAll done ✅")
+
+
+if __name__ == "__main__":
+    main()

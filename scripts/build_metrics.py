@@ -8,8 +8,12 @@ import pandas as pd
 from metrics import compute_daily_metrics, compute_key_metrics, get_weak_keys
 from metrics.weak_keys import export_weak_keys
 
-DB_PATH = Path("../db/keybr.db")
-OUTPUT_DIR = Path("../output")
+# Base directory of the repo: .../keybr_analytics
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
+# Absolute paths so the script works no matter from where it is called
+DB_PATH = ROOT_DIR / "db" / "keybr.db"
+OUTPUT_DIR = ROOT_DIR / "output"
 
 
 def write_daily_metrics(conn: sqlite3.Connection, daily_df: pd.DataFrame) -> None:

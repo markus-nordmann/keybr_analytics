@@ -4,12 +4,16 @@ from pathlib import Path
 
 import pandas as pd
 
-DB_PATH = Path("../db/keybr.db")
-JSON_PATH = Path("../raw/typing-data.json")
+# Base directory of the repo: .../keybr_analytics
+ROOT_DIR = Path(__file__).resolve().parents[1]
+
+# Absolute paths so the script works no matter from where it is called
+DB_PATH = ROOT_DIR / "db" / "keybr.db"
+JSON_PATH = ROOT_DIR / "raw" / "typing-data.json"
 
 
-def get_last_timestamp(conn):
-    """Lies den letzten Lesson-Timestamp aus der DB (für inkrementellen Import)."""
+def get_last_timestamp(conn: sqlite3.Connection):
+    """Read the last lesson timestamp from the DB (for incremental import)."""
     cur = conn.cursor()
     cur.execute("SELECT MAX(timeStamp) FROM lessons_raw;")
     row = cur.fetchone()
@@ -17,11 +21,11 @@ def get_last_timestamp(conn):
 
 
 def load_json():
-    """Lade die komplette KeyBR-JSON-Datei."""
+    """Load the full KeyBR JSON export file."""
     if not JSON_PATH.exists():
         raise FileNotFoundError(f"JSON file not found: {JSON_PATH}")
 
-    with open(JSON_PATH, "r", encoding="utf-8") as f:
+    with JSON_PATH.open("r", encoding="utf-8") as f:
         data = json.load(f)
 
     if not isinstance(data, list):
@@ -31,19 +35,17 @@ def load_json():
 
 
 def filter_new_lessons(all_lessons, last_ts):
-    """Filtere nur die Lessons, die NACH dem letzten Timestamp liegen."""
+    """Filter only lessons that come *after* the last timestamp in the DB."""
     if last_ts is None:
-        # Erste Initialbefüllung über JSON (eigentlich machst du das schon via CSV,
-        # aber damit wäre es auch ohne CSV möglich)
+        # First full load from JSON
         return all_lessons
 
-    # ISO-8601 Strings lassen sich lexikographisch zuverlässig vergleichen
-    new_lessons = [l for l in all_lessons if l.get("timeStamp") > last_ts]
-    return new_lessons
+    # ISO-8601 timestamp strings can be compared lexicographically
+    return [l for l in all_lessons if l.get("timeStamp") > last_ts]
 
 
 def lessons_to_dataframe(lessons):
-    """Wandle Lesson-Objekte in ein DataFrame passend zu lessons_raw um."""
+    """Convert lesson objects into a DataFrame matching lessons_raw."""
     rows = []
     for l in lessons:
         rows.append(
@@ -61,7 +63,7 @@ def lessons_to_dataframe(lessons):
 
 
 def histogram_to_keystats_dataframe(lessons):
-    """Flache die histogram-Einträge zu keystats_raw auf."""
+    """Flatten histogram entries into rows for keystats_raw."""
     rows = []
     for l in lessons:
         ts = l.get("timeStamp")
@@ -88,6 +90,8 @@ def histogram_to_keystats_dataframe(lessons):
 
 def import_new_data():
     print(f"Connecting to DB: {DB_PATH}")
+    print(f"Reading JSON from: {JSON_PATH}")
+
     conn = sqlite3.connect(DB_PATH)
 
     try:
@@ -104,14 +108,14 @@ def import_new_data():
             print("No new lessons found. Nothing to do.")
             return
 
-        # DataFrames für lessons_raw und keystats_raw
+        # DataFrames for lessons_raw and keystats_raw
         lessons_df = lessons_to_dataframe(new_lessons)
         keystats_df = histogram_to_keystats_dataframe(new_lessons)
 
         print(f"New lesson rows: {len(lessons_df)}")
         print(f"New keystats rows: {len(keystats_df)}")
 
-        # In DB schreiben
+        # Write into DB
         lessons_df.to_sql("lessons_raw", conn, if_exists="append", index=False)
         keystats_df.to_sql("keystats_raw", conn, if_exists="append", index=False)
 
