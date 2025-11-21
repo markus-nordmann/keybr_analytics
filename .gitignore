@@ -1,25 +1,16 @@
-# Raw KeyBR JSON files
-raw/
-raw/*
-
-# Database files
-db/
-*.db
-
-# Output CSVs
-output/
-*.csv
-
-# macOS system files
+# macOS / Editor
 .DS_Store
+.vscode/
 
-# Python cache
+# Python
 __pycache__/
 *.pyc
 
-# Virtual environments
-venv/
-.env/
+# SQLite DB (nicht pushen)
+db/keybr.db
 
-# Jupyter artifacts
-.ipynb_checkpoints/
+# Rohdaten (nicht pushen)
+raw/
+
+# Lokaler Pfad versehentlich committed – künftig ignorieren
+Users/
